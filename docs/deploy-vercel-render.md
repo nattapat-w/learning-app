@@ -67,7 +67,7 @@ pnpm db:seed
 
 1. Import repo → **Root Directory:** `apps/web`
 2. Framework: Next.js (auto)
-3. `vercel.json` already sets monorepo install/build commands
+3. `vercel.json` installs **only** `web` (`pnpm install --filter web...`) — skips API/Prisma postinstall
 
 **Environment variables**
 
