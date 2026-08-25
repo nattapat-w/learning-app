@@ -11,6 +11,7 @@ const authLinkBtn = `${linkAccent} font-medium bg-transparent border-none min-h-
 type AuthProviders = {
   google: boolean;
   magicLink: boolean;
+  googleMissing?: string[];
 };
 
 export function AuthModal() {
@@ -50,9 +51,20 @@ export function AuthModal() {
   useEffect(() => {
     if (!isOpen) return;
     fetch("/api/auth/providers")
-      .then((res) => res.json())
-      .then((data: AuthProviders) => setProviders(data))
-      .catch(() => setProviders({ google: false, magicLink: false }));
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`providers ${res.status}`);
+        }
+        return res.json() as Promise<AuthProviders>;
+      })
+      .then((data) => setProviders(data))
+      .catch(() =>
+        setProviders({
+          google: false,
+          magicLink: false,
+          googleMissing: ["API unreachable — check API_URL / Render"],
+        }),
+      );
   }, [isOpen]);
 
   useEffect(() => {
@@ -70,11 +82,13 @@ export function AuthModal() {
 
   function startGoogle() {
     if (!providers.google) {
+      const missing = providers.googleMissing?.join(", ");
       setNotice(
-        "Google sign-in is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in apps/api/.env, then restart the API.",
+        missing
+          ? `API still missing: ${missing}. Set on Render (production) or apps/api/.env (local). Trying Google…`
+          : "Google may not be configured on the API. Trying anyway…",
       );
       setError(null);
-      return;
     }
     window.location.href = "/api/auth/google";
   }

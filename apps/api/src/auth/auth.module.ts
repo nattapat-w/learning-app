@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { DynamicModule, Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtModule, JwtModuleOptions } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
@@ -8,28 +8,38 @@ import { AuthService } from "./auth.service";
 import { GoogleStrategy } from "./strategies/google.strategy";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 
-const googleOAuthEnabled =
-  process.env.GOOGLE_CLIENT_ID &&
-  process.env.GOOGLE_CLIENT_SECRET &&
-  process.env.GOOGLE_CALLBACK_URL;
+function isGoogleOAuthEnabled(): boolean {
+  return Boolean(
+    process.env.GOOGLE_CLIENT_ID?.trim() &&
+      process.env.GOOGLE_CLIENT_SECRET?.trim() &&
+      process.env.GOOGLE_CALLBACK_URL?.trim(),
+  );
+}
 
-@Module({
-  imports: [
-    UsersModule,
-    PassportModule.register({ defaultStrategy: "jwt" }),
-    JwtModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService): JwtModuleOptions => ({
-        secret: configService.getOrThrow<string>("JWT_SECRET"),
-      }),
-    }),
-  ],
-  controllers: [AuthController],
-  providers: [
-    AuthService,
-    JwtStrategy,
-    ...(googleOAuthEnabled ? [GoogleStrategy] : []),
-  ],
-  exports: [AuthService, JwtModule, PassportModule],
-})
-export class AuthModule {}
+@Module({})
+export class AuthModule {
+  static register(): DynamicModule {
+    const googleOAuthEnabled = isGoogleOAuthEnabled();
+
+    return {
+      module: AuthModule,
+      imports: [
+        UsersModule,
+        PassportModule.register({ defaultStrategy: "jwt" }),
+        JwtModule.registerAsync({
+          inject: [ConfigService],
+          useFactory: (configService: ConfigService): JwtModuleOptions => ({
+            secret: configService.getOrThrow<string>("JWT_SECRET"),
+          }),
+        }),
+      ],
+      controllers: [AuthController],
+      providers: [
+        AuthService,
+        JwtStrategy,
+        ...(googleOAuthEnabled ? [GoogleStrategy] : []),
+      ],
+      exports: [AuthService, JwtModule, PassportModule],
+    };
+  }
+}

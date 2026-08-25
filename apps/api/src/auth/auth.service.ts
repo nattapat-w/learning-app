@@ -36,14 +36,26 @@ export class AuthService {
     }
   }
 
-  getProviders(): { google: boolean; magicLink: boolean } {
+  getProviders(): {
+    google: boolean;
+    magicLink: boolean;
+    googleMissing?: string[];
+  } {
+    const googleMissing: string[] = [];
+    if (!this.configService.get("GOOGLE_CLIENT_ID")?.trim()) {
+      googleMissing.push("GOOGLE_CLIENT_ID");
+    }
+    if (!this.configService.get("GOOGLE_CLIENT_SECRET")?.trim()) {
+      googleMissing.push("GOOGLE_CLIENT_SECRET");
+    }
+    if (!this.configService.get("GOOGLE_CALLBACK_URL")?.trim()) {
+      googleMissing.push("GOOGLE_CALLBACK_URL");
+    }
+
     return {
-      google: Boolean(
-        this.configService.get("GOOGLE_CLIENT_ID") &&
-          this.configService.get("GOOGLE_CLIENT_SECRET") &&
-          this.configService.get("GOOGLE_CALLBACK_URL"),
-      ),
+      google: googleMissing.length === 0,
       magicLink: Boolean(this.resend && this.configService.get("EMAIL_FROM")),
+      ...(googleMissing.length > 0 ? { googleMissing } : {}),
     };
   }
 
