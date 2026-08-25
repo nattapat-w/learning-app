@@ -9,6 +9,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { randomUUID } from "crypto";
 import { writeFile } from "fs/promises";
+import { memoryStorage } from "multer";
 import { extname, join } from "path";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { UPLOADS_DIR } from "./uploads.constants";
@@ -35,6 +36,7 @@ export class UploadsController {
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor("file", {
+      storage: memoryStorage(),
       limits: { fileSize: 5 * 1024 * 1024 },
       fileFilter: (_req, file, cb) => {
         if (!ALLOWED_IMAGE_TYPES.has(file.mimetype)) {
@@ -46,7 +48,7 @@ export class UploadsController {
     }),
   )
   async uploadImage(@UploadedFile() file: UploadedImage | undefined) {
-    if (!file) {
+    if (!file?.buffer?.length) {
       throw new BadRequestException("No file uploaded");
     }
 

@@ -12,6 +12,7 @@ type PostFeedProps = {
   showCommunity?: boolean;
   emptyMessage?: string;
   defaultSort?: PostSort;
+  showSort?: boolean;
 };
 
 export function PostFeed({
@@ -19,10 +20,14 @@ export function PostFeed({
   showCommunity = true,
   emptyMessage = "No posts yet.",
   defaultSort = "best",
+  showSort = true,
 }: PostFeedProps) {
   const [sort, setSort] = useState<PostSort>(defaultSort);
 
-  const sorted = useMemo(() => sortPosts(posts, sort), [posts, sort]);
+  const sorted = useMemo(
+    () => (showSort ? sortPosts(posts, sort) : posts),
+    [posts, sort, showSort],
+  );
 
   if (posts.length === 0) {
     return (
@@ -34,9 +39,11 @@ export function PostFeed({
 
   return (
     <div>
-      <div className={feedSortBar}>
-        <SortDropdown value={sort} onChange={setSort} />
-      </div>
+      {showSort && (
+        <div className={feedSortBar}>
+          <SortDropdown value={sort} onChange={setSort} />
+        </div>
+      )}
       <ul className="space-y-[10px]">
         {sorted.map((post) => (
           <li key={post.id}>

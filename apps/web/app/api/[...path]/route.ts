@@ -3,6 +3,8 @@ import { getApiUrl } from "../../../lib/api-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+/** Allow slow Render cold starts + image upload through the proxy (Vercel cap may still apply on free tier). */
+export const maxDuration = 60;
 
 type RouteContext = { params: Promise<{ path: string[] }> };
 
@@ -34,7 +36,7 @@ async function proxyRequest(
   const headers = new Headers(request.headers);
   headers.delete("host");
   headers.delete("connection");
-  headers.delete("content-length");
+  headers.delete("cookie");
 
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
@@ -47,23 +49,47 @@ async function proxyRequest(
     request.method !== "HEAD" &&
     request.body !== null;
 
-  let body: ArrayBuffer | undefined;
+  const contentType = request.headers.get("content-type") ?? "";
+  const isMultipart = contentType.includes("multipart/form-data");
+
+  let body: BodyInit | null | undefined;
   if (hasBody) {
-    body = await request.arrayBuffer();
+    if (isMultipart) {
+      // Stream multipart bodies — arrayBuffer() breaks boundaries for multer.
+      body = request.body;
+      headers.delete("content-length");
+    } else {
+      const buf = await request.arrayBuffer();
+      body = buf.byteLength > 0 ? buf : undefined;
+      headers.delete("content-length");
+    }
+  }
+
+  const fetchInit: RequestInit & { duplex?: "half" } = {
+    method: request.method,
+    headers,
+    redirect: "manual",
+  };
+
+  if (body !== null && body !== undefined) {
+    fetchInit.body = body;
+    if (isMultipart) {
+      fetchInit.duplex = "half";
+    }
   }
 
   try {
-    const upstream = await fetch(target, {
-      method: request.method,
-      headers,
-      body: body && body.byteLength > 0 ? body : undefined,
-      redirect: "manual",
-    });
+    const upstream = await fetch(target, fetchInit);
+
+    const responseHeaders = new Headers(upstream.headers);
+    // Hop-by-hop — can break Next response parsing.
+    responseHeaders.delete("transfer-encoding");
+    responseHeaders.delete("connection");
 
     return new Response(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,
-      headers: upstream.headers,
+      headers: responseHeaders,
     });
   } catch {
     return Response.json(

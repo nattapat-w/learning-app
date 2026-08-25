@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { FormEvent, useRef, useState } from "react";
 import { btnPrimary, btnGhost, inputBase, labelCaps, textareaBase } from "../../../../lib/ui";
 
@@ -8,8 +7,18 @@ type SubmitPostFormProps = {
   communityName: string;
 };
 
+async function readErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    if (typeof body?.message === "string") return body.message;
+    if (Array.isArray(body?.message)) return body.message.join(", ");
+  } catch {
+    /* ignore */
+  }
+  return fallback;
+}
+
 export function SubmitPostForm({ communityName }: SubmitPostFormProps) {
-  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,12 +65,18 @@ export function SubmitPostForm({ communityName }: SubmitPostFormProps) {
     });
 
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      throw new Error(body?.message ?? "Failed to upload image");
+      throw new Error(await readErrorMessage(res, "Failed to upload image"));
     }
 
     const data = (await res.json()) as { url: string };
+    if (!data.url?.startsWith("/uploads/")) {
+      throw new Error("Invalid upload response from server");
+    }
     return data.url;
+  }
+
+  function goToPost(postId: string) {
+    window.location.assign(`/r/${communityName}/post/${postId}`);
   }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -91,16 +106,28 @@ export function SubmitPostForm({ communityName }: SubmitPostFormProps) {
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        setError(body?.message ?? "Failed to create post");
+        setError(await readErrorMessage(res, "Failed to create post"));
         return;
       }
 
-      const post = await res.json();
-      router.push(`/r/${communityName}/post/${post.id}`);
-      router.refresh();
+      const post = (await res.json()) as { id?: string };
+      if (!post.id) {
+        setError("Post created but server returned no id. Check the community feed.");
+        return;
+      }
+
+      goToPost(post.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Network error");
+      const msg = err instanceof Error ? err.message : "Network error";
+      if (msg === "Failed to fetch" || msg === "Network error") {
+        setError(
+          "Connection timed out or failed (common on Render cold start). Check r/" +
+            communityName +
+            " — your post may still have been created.",
+        );
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }

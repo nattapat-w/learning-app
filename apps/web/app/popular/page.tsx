@@ -17,7 +17,6 @@ export default async function PopularPage() {
 
       <PostList
         posts={posts}
-        defaultSort="hot"
         emptyMessage="No popular posts yet."
       />
     </AppShell>

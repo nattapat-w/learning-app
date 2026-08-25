@@ -4,6 +4,7 @@ import { AppShell } from "../../../../components/AppShell";
 import { CommentSection } from "../../../../components/CommentSection";
 import { CommunitySidebar } from "../../../../components/CommunitySidebar";
 import { PostDetail } from "../../../../components/PostDetail";
+import { TrackCommunityVisit } from "../../../../components/TrackCommunityVisit";
 import {
   getCommunity,
   getMe,
@@ -45,6 +46,10 @@ export default async function PostPage({ params }: PostPageProps) {
     <AppShell
       right={<CommunitySidebar community={community} isLoggedIn={!!user} />}
     >
+      <TrackCommunityVisit
+        name={community.name}
+        title={community.title}
+      />
       <Link
         href={`/r/${post.community.name}`}
         className={`mb-4 inline-flex items-center gap-1 text-sm font-medium ${linkNav} no-underline hover:no-underline`}
