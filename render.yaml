@@ -14,8 +14,7 @@ services:
     runtime: node
     plan: free
     rootDir: apps/api
-    buildCommand: cd ../.. && corepack enable && corepack prepare pnpm@11.13.0 --activate && pnpm install --filter api... --prod=false && pnpm --filter api build
-    preDeployCommand: npx prisma migrate deploy
+    buildCommand: cd ../.. && npm install -g pnpm@11.13.0 && pnpm install --filter api... --prod=false && pnpm --filter api build && pnpm --filter api prisma:deploy
     startCommand: node dist/main.js
     healthCheckPath: /health
     envVars:

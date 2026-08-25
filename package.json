@@ -25,6 +25,7 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter api prisma:migrate",
+    "db:deploy": "pnpm --filter api prisma:deploy",
     "db:seed": "pnpm --filter api prisma:seed"
   }
 }

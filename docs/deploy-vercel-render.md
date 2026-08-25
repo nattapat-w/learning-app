@@ -16,16 +16,7 @@ Browser → Vercel (apps/web)
 
 ---
 
-## 1. Render — API + database
-
-### Option A: Blueprint
-
-1. Render Dashboard → **New → Blueprint**
-2. Connect repo → select `render.yaml` at repo root
-3. Set **WEB_URL** when prompted (your Vercel URL, set after step 2 if needed)
-4. After deploy, copy the API URL (e.g. `https://learning-app-api.onrender.com`)
-
-### Option B: Manual
+## 1. Render — API + database (manual)
 
 **PostgreSQL**
 
@@ -37,8 +28,7 @@ Browser → Vercel (apps/web)
 | Setting | Value |
 |---------|--------|
 | Root Directory | `apps/api` |
-| Build Command | `cd ../.. && corepack enable && corepack prepare pnpm@11.13.0 --activate && pnpm install --filter api... --prod=false && pnpm --filter api build` |
-| Pre-deploy | `npx prisma migrate deploy` |
+| Build Command | `cd ../.. && npm install -g pnpm@11.13.0 && pnpm install --filter api... --prod=false && pnpm --filter api build && pnpm --filter api prisma:deploy` |
 | Start Command | `node dist/main.js` |
 | Health check | `/health` |
 | Optional env | `SKIP_INSTALL_DEPS=true` |
@@ -51,8 +41,10 @@ DATABASE_URL=<Render Postgres internal URL>
 JWT_SECRET=<long random string>
 JWT_EXPIRES_IN=7d
 WEB_URL=https://your-app.vercel.app
-GOOGLE_CALLBACK_URL=https://your-api.onrender.com/auth/google/callback
+GOOGLE_CALLBACK_URL=https://your-app.vercel.app/api/auth/google/callback
 ```
+
+`GOOGLE_CALLBACK_URL` must use your **Vercel** `/api` proxy — not the Render API host. The browser only stores cookies for the site you visit; callback via Render sets the cookie on `onrender.com` and login breaks on Vercel.
 
 Optional: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`, `CORS_ORIGINS`
 
@@ -92,7 +84,7 @@ Back on **Render API** service, set:
 
 ```env
 WEB_URL=https://your-app.vercel.app
-GOOGLE_CALLBACK_URL=https://your-api.onrender.com/auth/google/callback
+GOOGLE_CALLBACK_URL=https://your-app.vercel.app/api/auth/google/callback
 ```
 
 If you use **Vercel preview URLs** for auth testing, add to Render:
@@ -103,7 +95,7 @@ CORS_ORIGINS=https://your-app-git-branch.vercel.app
 
 Redeploy API after env changes.
 
-**Google OAuth console:** authorized redirect URI = `GOOGLE_CALLBACK_URL`.
+**Google OAuth console:** authorized redirect URI = `GOOGLE_CALLBACK_URL` (Vercel `/api/auth/google/callback`, not Render).
 
 ---
 
