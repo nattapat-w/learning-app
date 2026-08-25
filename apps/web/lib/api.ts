@@ -1,8 +1,11 @@
+import { getApiUrl } from "./api-url";
+
 function getBaseUrl(): string {
   if (typeof window !== "undefined") {
     return "/api";
   }
-  return process.env.API_URL ?? "http://localhost:3001";
+  const url = getApiUrl();
+  return url ?? "http://localhost:3001";
 }
 
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {

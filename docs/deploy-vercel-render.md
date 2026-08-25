@@ -37,10 +37,11 @@ Browser → Vercel (apps/web)
 | Setting | Value |
 |---------|--------|
 | Root Directory | `apps/api` |
-| Build Command | `cd ../.. && corepack enable && pnpm install --filter api... && pnpm --filter api build` |
+| Build Command | `cd ../.. && corepack enable && pnpm install --filter api... --prod=false && pnpm --filter api build` |
 | Pre-deploy | `npx prisma migrate deploy` |
 | Start Command | `node dist/main.js` |
 | Health check | `/health` |
+| Optional env | `SKIP_INSTALL_DEPS=true` |
 
 **Environment variables**
 
@@ -76,10 +77,10 @@ pnpm db:seed
 **Environment variables**
 
 ```env
-API_URL=https://your-api.onrender.com
+API_URL=https://learning-app-oiw6.onrender.com
 ```
 
-No trailing slash on `API_URL`.
+No trailing slash. **Scope: Production + Preview** (not Development only — your live `.vercel.app` URL uses Production).
 
 4. Deploy → copy production URL (e.g. `https://your-app.vercel.app`)
 

@@ -5,20 +5,34 @@ import cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
 import { UPLOADS_DIR } from "./uploads/uploads.constants";
 
-function getCorsOrigins(): string[] | boolean {
+function getCorsOrigins():
+  | string[]
+  | boolean
+  | ((origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => void) {
   const webUrl = process.env.WEB_URL?.replace(/\/$/, "");
-  const extra = process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean) ?? [];
+  const extra =
+    process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean) ?? [];
 
   if (process.env.NODE_ENV !== "production") {
     return true;
   }
 
-  const origins = new Set<string>(["http://localhost:3000", ...extra]);
+  const allowed = new Set<string>(["http://localhost:3000", ...extra]);
   if (webUrl) {
-    origins.add(webUrl);
+    allowed.add(webUrl);
   }
 
-  return origins.size > 0 ? [...origins] : true;
+  return (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+    if (allowed.has(origin) || origin.endsWith(".vercel.app")) {
+      callback(null, true);
+      return;
+    }
+    callback(null, false);
+  };
 }
 
 async function bootstrap() {
@@ -40,7 +54,7 @@ async function bootstrap() {
   );
 
   const port = process.env.PORT ? Number(process.env.PORT) : 3001;
-  await app.listen(port);
+  await app.listen(port, "0.0.0.0");
 }
 
 bootstrap();

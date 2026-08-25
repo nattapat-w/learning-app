@@ -1,16 +1,6 @@
 import type { NextConfig } from "next";
 
-const apiUrl = (process.env.API_URL ?? "http://localhost:3001").replace(/\/$/, "");
-
-const nextConfig: NextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${apiUrl}/:path*`,
-      },
-    ];
-  },
-};
+// /api/* is proxied by app/api/[...path]/route.ts using runtime API_URL.
+const nextConfig: NextConfig = {};
 
 export default nextConfig;
