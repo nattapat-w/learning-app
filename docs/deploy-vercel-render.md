@@ -37,7 +37,7 @@ Browser → Vercel (apps/web)
 | Setting | Value |
 |---------|--------|
 | Root Directory | `apps/api` |
-| Build Command | `cd ../.. && corepack enable && pnpm install --filter api... --prod=false && pnpm --filter api build` |
+| Build Command | `cd ../.. && corepack enable && corepack prepare pnpm@11.13.0 --activate && pnpm install --filter api... --prod=false && pnpm --filter api build` |
 | Pre-deploy | `npx prisma migrate deploy` |
 | Start Command | `node dist/main.js` |
 | Health check | `/health` |
