@@ -55,7 +55,7 @@ GOOGLE_CALLBACK_URL=https://your-api.onrender.com/auth/google/callback
 
 Optional: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`, `CORS_ORIGINS`
 
-**Copy-paste template:** `apps/api/.env.render.example` — fill placeholders, paste each key into Render Environment (do not commit secrets).
+**Copy-paste template:** `apps/api/.env.production.example` — paste keys into Render Environment.
 
 **Seed (optional, one-time shell on Render or locally against prod DB):**
 
@@ -71,7 +71,7 @@ pnpm db:seed
 2. Framework: Next.js (auto)
 3. `vercel.json` installs **only** `web` (`pnpm install --filter web...`) — skips API/Prisma postinstall
 
-**Copy-paste template:** `apps/web/.env.vercel.example`
+**Copy-paste template:** `apps/web/.env.production.example`
 
 **Environment variables**
 
