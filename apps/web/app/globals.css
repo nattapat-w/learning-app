@@ -1,0 +1,184 @@
+@import "tailwindcss";
+
+:root {
+  /* Reddit dark mode — see DESIGN.md */
+  --canvas: #0b1416;
+  --card: #1a1a1b;
+  --elevated: #272729;
+  --inset: #161617;
+  --orangered: #ff4500;
+  --orangered-hover: #e63e00;
+  --orangered-active: #cc3700;
+  --periwinkle: #7193ff;
+  --reddit-blue: #4fbcff;
+  --reddit-blue-hover: #6ecaff;
+  --text-primary: #d7dadc;
+  --text-secondary: #818384;
+  --text-tertiary: #6b6c6d;
+  --border: #343536;
+  --online-green: #46d160;
+  --hover-overlay: rgba(255, 255, 255, 0.1);
+  --selected-overlay: rgba(79, 188, 255, 0.1);
+
+  /* Legacy aliases used in Tailwind theme */
+  --background-primary: var(--elevated);
+  --background-secondary: var(--card);
+  --background-secondary-alt: var(--elevated);
+  --background-tertiary: var(--canvas);
+  --background-floating: var(--card);
+  --brand-500: var(--orangered);
+  --brand-560: var(--orangered-hover);
+  --brand-600: var(--orangered-active);
+  --text-normal: var(--text-primary);
+  --text-muted: var(--text-secondary);
+  --text-link: var(--reddit-blue);
+  --header-primary: var(--text-primary);
+  --header-secondary: var(--text-secondary);
+  --divider: var(--border);
+  --background-modifier-hover: var(--hover-overlay);
+  --background-modifier-selected: var(--selected-overlay);
+  --scrollbar-thumb: #3a3a3c;
+  --scrollbar-thumb-hover: #545456;
+  --scrollbar-track: transparent;
+
+  --font-primary:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --font-display: var(--font-ibm-plex), var(--font-primary);
+  --radius-card: 4px;
+}
+
+@theme inline {
+  --color-d-primary: #272729;
+  --color-d-secondary: #1a1a1b;
+  --color-d-secondary-alt: #272729;
+  --color-d-tertiary: #0b1416;
+  --color-d-floating: #1a1a1b;
+  --color-d-inset: #161617;
+  --color-d-inset: #161617;
+  --color-brand: #ff4500;
+  --color-brand-hover: #e63e00;
+  --color-brand-active: #cc3700;
+  --color-d-normal: #d7dadc;
+  --color-d-muted: #818384;
+  --color-d-link: #4fbcff;
+  --color-d-header: #d7dadc;
+  --color-d-header-secondary: #818384;
+  --color-d-success: #46d160;
+  --color-d-danger: #ff0000;
+  --color-d-divider: #343536;
+  --color-d-periwinkle: #7193ff;
+  --color-d-periwinkle: #7193ff;
+  --color-d-btn-secondary: transparent;
+  --color-d-btn-secondary-hover: rgba(79, 188, 255, 0.1);
+  --font-sans: var(--font-primary);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: var(--canvas);
+    color: var(--text-primary);
+    font-family: var(--font-primary);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a,
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  label[for],
+  select,
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  ::selection {
+    background-color: rgb(255 69 0 / 0.25);
+  }
+
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+@layer components {
+  .auth-modal-panel {
+    animation: modal-in 0.3s ease;
+  }
+
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: scale(0.98) translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .hover-surface {
+    transition: background-color 150ms ease;
+  }
+
+  .hover-surface:hover {
+    background-color: var(--hover-overlay);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

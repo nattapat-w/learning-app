@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String?
+  googleId     String?  @unique
+  displayName  String?
+  bio          String?
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  posts              Post[]
+  comments           Comment[]
+  votes              Vote[]
+  memberships        CommunityMember[]
+  communitiesCreated Community[]       @relation("CommunityCreator")
+}
+
+model MagicLinkToken {
+  id        String    @id @default(cuid())
+  email     String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+}
+
+model Community {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  title       String
+  description String?
+  creatorId   String
+  creator     User     @relation("CommunityCreator", fields: [creatorId], references: [id])
+  createdAt   DateTime @default(now())
+
+  posts   Post[]
+  members CommunityMember[]
+  rules   CommunityRule[]
+}
+
+model CommunityRule {
+  id          String   @id @default(cuid())
+  communityId String
+  position    Int
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, position])
+  @@index([communityId])
+}
+
+model CommunityMember {
+  id          String     @id @default(cuid())
+  userId      String
+  communityId String
+  role        MemberRole @default(MEMBER)
+  joinedAt    DateTime   @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  community Community @relation(fields: [communityId], references: [id])
+
+  @@unique([userId, communityId])
+}
+
+enum MemberRole {
+  MEMBER
+  MODERATOR
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  title       String
+  body        String?
+  imageUrl    String?
+  authorId    String
+  communityId String
+  score       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  author    User      @relation(fields: [authorId], references: [id])
+  community Community @relation(fields: [communityId], references: [id])
+  comments  Comment[]
+
+  @@index([communityId, createdAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  body      String
+  authorId  String
+  postId    String
+  parentId  String?
+  score     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author   User      @relation(fields: [authorId], references: [id])
+  post     Post      @relation(fields: [postId], references: [id])
+  parent   Comment?  @relation("CommentTree", fields: [parentId], references: [id])
+  children Comment[] @relation("CommentTree")
+
+  @@index([postId, createdAt])
+}
+
+model Vote {
+  id         String     @id @default(cuid())
+  userId     String
+  targetType VoteTarget
+  targetId   String
+  value      Int
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, targetType, targetId])
+  @@index([targetType, targetId])
+}
+
+enum VoteTarget {
+  POST
+  COMMENT
+}
