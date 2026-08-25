@@ -37,7 +37,7 @@ Browser → Vercel (apps/web)
 | Setting | Value |
 |---------|--------|
 | Root Directory | `apps/api` |
-| Build Command | `cd ../.. && corepack enable && pnpm install && pnpm --filter api build` |
+| Build Command | `cd ../.. && corepack enable && pnpm install --filter api... && pnpm --filter api build` |
 | Pre-deploy | `npx prisma migrate deploy` |
 | Start Command | `node dist/main.js` |
 | Health check | `/health` |
@@ -157,3 +157,4 @@ pnpm dev
 | Google OAuth fails | `GOOGLE_CALLBACK_URL` must match Google console + Render URL |
 | Render cold start slow | Free tier sleeps after idle — first request wakes service |
 | Images disappear | Expected on Render without object storage |
+| `PNPM_IGNORED_BUILDS` / `pnpm install` exit 1 | Push latest `pnpm-workspace.yaml` + root `package.json` (`esbuild` in `allowBuilds`). Update Build Command to `pnpm install --filter api...` |
