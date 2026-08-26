@@ -24,7 +24,6 @@ export class LineStrategy extends PassportStrategy(Strategy, "line") {
       clientSecret: configService.getOrThrow<string>("LINE_CHANNEL_SECRET"),
       callbackURL: configService.getOrThrow<string>("LINE_CALLBACK_URL"),
       scope: ["profile", "openid"],
-      state: true,
     });
   }
 
