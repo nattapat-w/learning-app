@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useJoinCommunityMutation } from "../../lib/hooks/use-api-mutations";
 
 type JoinCommunityButtonProps = {
   communityName: string;
@@ -25,8 +25,7 @@ export function JoinCommunityButton({
   initialRole = null,
   isCreator = false,
 }: JoinCommunityButtonProps) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const joinMutation = useJoinCommunityMutation(communityName);
   const [isMember, setIsMember] = useState(initialIsMember);
   const [role, setRole] = useState(initialRole);
   const [creator, setCreator] = useState(isCreator);
@@ -37,21 +36,13 @@ export function JoinCommunityButton({
     setCreator(isCreator);
   }, [initialIsMember, initialRole, isCreator]);
 
-  async function join() {
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `/api/communities/${encodeURIComponent(communityName)}/join`,
-        { method: "POST", credentials: "include" },
-      );
-      if (res.ok) {
+  function join() {
+    joinMutation.mutate(undefined, {
+      onSuccess: () => {
         setIsMember(true);
         setRole("MEMBER");
-        router.refresh();
-      }
-    } finally {
-      setLoading(false);
-    }
+      },
+    });
   }
 
   if (isMember || creator) {
@@ -66,10 +57,10 @@ export function JoinCommunityButton({
     <button
       type="button"
       onClick={join}
-      disabled={loading}
+      disabled={joinMutation.isPending}
       className="inline-flex min-h-8 cursor-pointer items-center justify-center rounded-full border border-d-divider bg-d-secondary px-4 text-xs font-bold text-d-header transition-colors hover:bg-[var(--background-modifier-hover)] disabled:opacity-50"
     >
-      {loading ? "…" : "Join"}
+      {joinMutation.isPending ? "…" : "Join"}
     </button>
   );
 }

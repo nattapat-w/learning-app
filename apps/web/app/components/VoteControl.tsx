@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useVoteMutation } from "../../lib/hooks/use-api-mutations";
 import { useAuth } from "./auth/auth-context";
 
 type VoteControlProps = {
@@ -50,40 +51,43 @@ export function VoteControl({
   const { openAuth } = useAuth();
   const [score, setScore] = useState(initialScore);
   const [userVote, setUserVote] = useState<number | null>(initialUserVote);
-  const [loading, setLoading] = useState(false);
 
-  async function cast(value: 1 | -1) {
-    if (loading) return;
+  const voteMutation = useVoteMutation(targetType, targetId, () =>
+    openAuth("login"),
+  );
 
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `/api/${targetType === "post" ? "posts" : "comments"}/${encodeURIComponent(targetId)}/vote`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ value }),
-        },
-      );
+  function cast(value: 1 | -1) {
+    if (voteMutation.isPending) return;
 
-      if (res.status === 401) {
-        openAuth("login");
-        return;
-      }
+    const prev = { score, userVote };
+    let nextScore = score;
+    let nextVote: number | null = value;
 
-      if (!res.ok) return;
-
-      const data = (await res.json()) as { score: number; userVote: number | null };
-      setScore(data.score);
-      setUserVote(data.userVote);
-    } finally {
-      setLoading(false);
+    if (userVote === value) {
+      nextVote = null;
+      nextScore -= value;
+    } else {
+      nextScore += value - (userVote ?? 0);
     }
+
+    setScore(nextScore);
+    setUserVote(nextVote);
+
+    voteMutation.mutate(value, {
+      onSuccess: (data) => {
+        setScore(data.score);
+        setUserVote(data.userVote);
+      },
+      onError: () => {
+        setScore(prev.score);
+        setUserVote(prev.userVote);
+      },
+    });
   }
 
   const upActive = userVote === 1;
   const downActive = userVote === -1;
+  const loading = voteMutation.isPending;
 
   const isColumn = layout === "column";
   const wrapper = isColumn

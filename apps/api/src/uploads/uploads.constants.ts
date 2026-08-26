@@ -1,3 +1,4 @@
 import { join } from "path";
 
-export const UPLOADS_DIR = join(process.cwd(), "uploads");
+/** Always `apps/api/uploads` — not dependent on process.cwd() in monorepo. */
+export const UPLOADS_DIR = join(__dirname, "..", "..", "uploads");

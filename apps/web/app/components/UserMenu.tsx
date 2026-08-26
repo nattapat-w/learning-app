@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useLogoutMutation } from "../../lib/hooks/use-api-mutations";
 import type { UserPublic } from "../../lib/types";
 import { btnGhost, btnPrimary, linkNav } from "../../lib/ui";
 import { useAuth } from "./auth/auth-context";
@@ -13,7 +13,7 @@ type UserMenuProps = {
 };
 
 export function UserMenu({ user }: UserMenuProps) {
-  const router = useRouter();
+  const logoutMutation = useLogoutMutation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -28,10 +28,10 @@ export function UserMenu({ user }: UserMenuProps) {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [open]);
 
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    setOpen(false);
-    router.refresh();
+  function logout() {
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => setOpen(false),
+    });
   }
 
   return (

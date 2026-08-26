@@ -1,47 +1,28 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { useCreateCommunityMutation } from "../../../lib/hooks/use-api-mutations";
 import { btnPrimary, inputBase, labelCaps, textareaBase } from "../../../lib/ui";
 
 export function CreateCommunityForm() {
-  const router = useRouter();
+  const createCommunity = useCreateCommunityMutation();
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
     const form = e.currentTarget;
     const formData = new FormData(form);
 
     try {
-      const res = await fetch("/api/communities", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: String(formData.get("name")),
-          title: String(formData.get("title")),
-          description: String(formData.get("description") || ""),
-        }),
+      await createCommunity.mutateAsync({
+        name: String(formData.get("name")),
+        title: String(formData.get("title")),
+        description: String(formData.get("description") || ""),
       });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        setError(body?.message ?? "Failed to create community");
-        return;
-      }
-
-      const community = await res.json();
-      router.push(`/r/${community.name}`);
-      router.refresh();
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create community");
     }
   }
 
@@ -91,8 +72,8 @@ export function CreateCommunityForm() {
       {error && (
         <p className="text-sm font-medium text-d-danger">{error}</p>
       )}
-      <button type="submit" disabled={loading} className={btnPrimary}>
-        {loading ? "Creating…" : "Create community"}
+      <button type="submit" disabled={createCommunity.isPending} className={btnPrimary}>
+        {createCommunity.isPending ? "Creating…" : "Create community"}
       </button>
     </form>
   );

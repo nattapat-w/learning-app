@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { usePostCommentsQuery } from "../../lib/hooks/use-api-queries";
 import type { CommentPublic, UserPublic } from "../../lib/types";
 import { linkNav, meta } from "../../lib/ui";
 import { CommentForm } from "./CommentForm";
@@ -93,10 +94,12 @@ function CommentNode({
 }
 
 export function CommentList({ comments, postId, user }: CommentListProps) {
-  const topLevel = comments.filter((c) => !c.parentId);
+  const { data: liveComments = comments } = usePostCommentsQuery(postId, comments);
+
+  const topLevel = liveComments.filter((c) => !c.parentId);
   const byParent = new Map<string, CommentPublic[]>();
 
-  for (const c of comments) {
+  for (const c of liveComments) {
     if (c.parentId) {
       const list = byParent.get(c.parentId) ?? [];
       list.push(c);

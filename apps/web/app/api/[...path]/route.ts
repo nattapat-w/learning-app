@@ -3,7 +3,6 @@ import { getApiUrl } from "../../../lib/api-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-/** Allow slow Render cold starts + image upload through the proxy (Vercel cap may still apply on free tier). */
 export const maxDuration = 60;
 
 type RouteContext = { params: Promise<{ path: string[] }> };
@@ -17,6 +16,28 @@ function missingApiUrlResponse(): Response {
     },
     { status: 503 },
   );
+}
+
+/** Headers safe to forward to the browser (avoid gzip/length mismatches from streaming). */
+function buildResponseHeaders(upstream: Response): Headers {
+  const out = new Headers();
+  const contentType = upstream.headers.get("content-type");
+  if (contentType) {
+    out.set("content-type", contentType);
+  }
+
+  const setCookie = upstream.headers.getSetCookie?.() ?? [];
+  for (const cookie of setCookie) {
+    out.append("set-cookie", cookie);
+  }
+  if (setCookie.length === 0) {
+    const single = upstream.headers.get("set-cookie");
+    if (single) {
+      out.set("set-cookie", single);
+    }
+  }
+
+  return out;
 }
 
 async function proxyRequest(
@@ -33,10 +54,12 @@ async function proxyRequest(
   const incoming = new URL(request.url);
   const target = `${apiUrl}/${pathname}${incoming.search}`;
 
-  const headers = new Headers(request.headers);
-  headers.delete("host");
-  headers.delete("connection");
-  headers.delete("cookie");
+  const headers = new Headers();
+  const contentType = request.headers.get("content-type") ?? "";
+  const isMultipart = contentType.includes("multipart/form-data");
+
+  const accept = request.headers.get("accept");
+  if (accept) headers.set("accept", accept);
 
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
@@ -49,53 +72,49 @@ async function proxyRequest(
     request.method !== "HEAD" &&
     request.body !== null;
 
-  const contentType = request.headers.get("content-type") ?? "";
-  const isMultipart = contentType.includes("multipart/form-data");
-
-  let body: BodyInit | null | undefined;
+  let body: BodyInit | undefined;
   if (hasBody) {
     if (isMultipart) {
-      // Stream multipart bodies — arrayBuffer() breaks boundaries for multer.
-      body = request.body;
-      headers.delete("content-length");
-    } else {
+      const incomingForm = await request.formData();
+      const outgoingForm = new FormData();
+      for (const [key, value] of incomingForm.entries()) {
+        if (typeof value === "string") {
+          outgoingForm.append(key, value);
+        } else {
+          outgoingForm.append(key, value, value.name);
+        }
+      }
+      body = outgoingForm;
+    } else if (contentType.includes("application/json")) {
+      headers.set("content-type", contentType);
       const buf = await request.arrayBuffer();
-      body = buf.byteLength > 0 ? buf : undefined;
-      headers.delete("content-length");
-    }
-  }
-
-  const fetchInit: RequestInit & { duplex?: "half" } = {
-    method: request.method,
-    headers,
-    redirect: "manual",
-  };
-
-  if (body !== null && body !== undefined) {
-    fetchInit.body = body;
-    if (isMultipart) {
-      fetchInit.duplex = "half";
+      if (buf.byteLength > 0) body = buf;
+    } else {
+      if (contentType) headers.set("content-type", contentType);
+      const buf = await request.arrayBuffer();
+      if (buf.byteLength > 0) body = buf;
     }
   }
 
   try {
-    const upstream = await fetch(target, fetchInit);
+    const upstream = await fetch(target, {
+      method: request.method,
+      headers,
+      body,
+      redirect: "manual",
+    });
 
-    const responseHeaders = new Headers(upstream.headers);
-    // Hop-by-hop — can break Next response parsing.
-    responseHeaders.delete("transfer-encoding");
-    responseHeaders.delete("connection");
-
-    return new Response(upstream.body, {
+    const responseBody = await upstream.arrayBuffer();
+    return new Response(responseBody, {
       status: upstream.status,
       statusText: upstream.statusText,
-      headers: responseHeaders,
+      headers: buildResponseHeaders(upstream),
     });
   } catch {
     return Response.json(
       {
         statusCode: 502,
-        message: `API unreachable at ${apiUrl}. Check Render service is running.`,
+        message: `API unreachable at ${apiUrl}. Is the API running?`,
       },
       { status: 502 },
     );

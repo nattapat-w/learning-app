@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useCreateCommentMutation } from "../../lib/hooks/use-api-mutations";
 import type { UserPublic } from "../../lib/types";
 import { btnPrimary, textareaBase } from "../../lib/ui";
 import { useAuth } from "./auth/auth-context";
@@ -21,10 +21,9 @@ export function CommentForm({
   onCancel,
   compact,
 }: CommentFormProps) {
-  const router = useRouter();
   const { openAuth } = useAuth();
+  const createComment = useCreateCommentMutation(postId);
   const [body, setBody] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!user) {
@@ -55,25 +54,16 @@ export function CommentForm({
     const trimmed = body.trim();
     if (!trimmed) return;
 
-    setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/posts/${encodeURIComponent(postId)}/comments`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: trimmed, parentId }),
+      await createComment.mutateAsync({
+        body: trimmed,
+        parentId,
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setError(data?.message ?? "Failed to post comment");
-        return;
-      }
       setBody("");
       onCancel?.();
-      router.refresh();
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to post comment");
     }
   }
 
@@ -85,16 +75,16 @@ export function CommentForm({
         placeholder="Add a comment"
         rows={compact ? 3 : 4}
         className={textareaBase}
-        disabled={loading}
+        disabled={createComment.isPending}
       />
       {error && <p className="mt-2 text-sm text-d-danger">{error}</p>}
       <div className="mt-2 flex gap-2">
         <button
           type="submit"
-          disabled={loading || !body.trim()}
+          disabled={createComment.isPending || !body.trim()}
           className={`${btnPrimary} min-h-[32px] min-w-0 px-4 py-1 text-sm`}
         >
-          {loading ? "Posting…" : "Comment"}
+          {createComment.isPending ? "Posting…" : "Comment"}
         </button>
         {onCancel && (
           <button

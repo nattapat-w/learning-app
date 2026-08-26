@@ -3,7 +3,6 @@ import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
-import { UPLOADS_DIR } from "./uploads/uploads.constants";
 
 function getCorsOrigins():
   | string[]
@@ -38,7 +37,6 @@ function getCorsOrigins():
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.use(cookieParser());
-  app.useStaticAssets(UPLOADS_DIR, { prefix: "/uploads/" });
 
   app.enableCors({
     origin: getCorsOrigins(),

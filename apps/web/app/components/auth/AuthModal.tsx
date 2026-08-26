@@ -1,8 +1,13 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { btnGhost, btnPrimary, btnSecondary, focusRing, inputBase, linkAccent } from "../../../lib/ui";
+import {
+  useAuthProviders,
+  useLoginMutation,
+  useMagicLinkMutation,
+  useRegisterMutation,
+} from "../../../lib/hooks/use-api-mutations";
 import { useAuth } from "./auth-context";
 import { SocialAuthButton, socialIcons } from "./SocialAuthButton";
 
@@ -14,16 +19,31 @@ type AuthProviders = {
   googleMissing?: string[];
 };
 
+const defaultProviders: AuthProviders = {
+  google: false,
+  magicLink: false,
+};
+
 export function AuthModal() {
-  const router = useRouter();
   const { isOpen, mode, closeAuth, setMode } = useAuth();
-  const [providers, setProviders] = useState<AuthProviders>({
-    google: false,
-    magicLink: false,
-  });
+  const providersQuery = useAuthProviders(isOpen);
+  const loginMutation = useLoginMutation();
+  const registerMutation = useRegisterMutation();
+  const magicLinkMutation = useMagicLinkMutation();
+
+  const providers = providersQuery.data ?? defaultProviders;
+  const providersError =
+    providersQuery.isError && !providersQuery.data
+      ? ({
+          google: false,
+          magicLink: false,
+          googleMissing: ["API unreachable — check API_URL / Render"],
+        } satisfies AuthProviders)
+      : null;
+  const activeProviders = providersError ?? providers;
+
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [magicLinkMode, setMagicLinkMode] = useState(false);
   const [identifier, setIdentifier] = useState("");
@@ -31,6 +51,10 @@ export function AuthModal() {
   const [username, setUsername] = useState("");
   const [magicEmail, setMagicEmail] = useState("");
 
+  const loading =
+    loginMutation.isPending ||
+    registerMutation.isPending ||
+    magicLinkMutation.isPending;
   const resetForm = useCallback(() => {
     setError(null);
     setNotice(null);
@@ -50,25 +74,6 @@ export function AuthModal() {
 
   useEffect(() => {
     if (!isOpen) return;
-    fetch("/api/auth/providers")
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error(`providers ${res.status}`);
-        }
-        return res.json() as Promise<AuthProviders>;
-      })
-      .then((data) => setProviders(data))
-      .catch(() =>
-        setProviders({
-          google: false,
-          magicLink: false,
-          googleMissing: ["API unreachable — check API_URL / Render"],
-        }),
-      );
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") closeAuth();
     }
@@ -81,8 +86,8 @@ export function AuthModal() {
   }, [isOpen, closeAuth]);
 
   function startGoogle() {
-    if (!providers.google) {
-      const missing = providers.googleMissing?.join(", ");
+    if (!activeProviders.google) {
+      const missing = activeProviders.googleMissing?.join(", ");
       setNotice(
         missing
           ? `API still missing: ${missing}. Set on Render (production) or apps/api/.env (local). Trying Google…`
@@ -104,30 +109,17 @@ export function AuthModal() {
       return;
     }
 
-    if (!providers.magicLink) {
+    if (!activeProviders.magicLink) {
       setNotice("Magic link is not configured. Add RESEND_API_KEY and EMAIL_FROM.");
       return;
     }
 
-    setLoading(true);
     try {
-      const res = await fetch("/api/auth/magic-link", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        setError(body?.message ?? "Failed to send magic link");
-        return;
-      }
+      await magicLinkMutation.mutateAsync(email);
       setNotice("Check your email for a one-time sign-in link.");
       setMagicLinkMode(false);
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send magic link");
     }
   }
 
@@ -135,41 +127,20 @@ export function AuthModal() {
     e.preventDefault();
     setError(null);
     setNotice(null);
-    setLoading(true);
 
     try {
       if (mode === "login") {
-        const res = await fetch("/api/auth/login", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ identifier, password }),
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => null);
-          setError(body?.message ?? "Log in failed");
-          return;
-        }
+        await loginMutation.mutateAsync({ identifier, password });
       } else {
-        const res = await fetch("/api/auth/register", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, email: identifier, password }),
+        await registerMutation.mutateAsync({
+          username,
+          email: identifier,
+          password,
         });
-        if (!res.ok) {
-          const body = await res.json().catch(() => null);
-          setError(body?.message ?? "Sign up failed");
-          return;
-        }
       }
-
       closeAuth();
-      router.refresh();
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
     }
   }
 
@@ -249,13 +220,13 @@ export function AuthModal() {
                 icon={socialIcons.google}
                 label="Continue with Google"
                 onClick={startGoogle}
-                dimmed={!providers.google}
+                dimmed={!activeProviders.google}
               />
               <SocialAuthButton
                 icon={socialIcons.link}
                 label="Email me a one-time link"
                 onClick={() => {
-                  if (!providers.magicLink) {
+                  if (!activeProviders.magicLink) {
                     setNotice(
                       "Magic link is not configured. Add RESEND_API_KEY and EMAIL_FROM.",
                     );
@@ -267,7 +238,7 @@ export function AuthModal() {
                   setError(null);
                   setNotice(null);
                 }}
-                dimmed={!providers.magicLink}
+                dimmed={!activeProviders.magicLink}
               />
             </div>
 

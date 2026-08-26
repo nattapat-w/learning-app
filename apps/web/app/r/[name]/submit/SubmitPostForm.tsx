@@ -1,27 +1,17 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
+import { useCreatePostMutation } from "../../../../lib/hooks/use-api-mutations";
 import { btnPrimary, btnGhost, inputBase, labelCaps, textareaBase } from "../../../../lib/ui";
 
 type SubmitPostFormProps = {
   communityName: string;
 };
 
-async function readErrorMessage(res: Response, fallback: string): Promise<string> {
-  try {
-    const body = await res.json();
-    if (typeof body?.message === "string") return body.message;
-    if (Array.isArray(body?.message)) return body.message.join(", ");
-  } catch {
-    /* ignore */
-  }
-  return fallback;
-}
-
 export function SubmitPostForm({ communityName }: SubmitPostFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const createPost = useCreatePostMutation(communityName);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -54,82 +44,23 @@ export function SubmitPostForm({ communityName }: SubmitPostFormProps) {
     }
   }
 
-  async function uploadImage(file: File): Promise<string> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const res = await fetch("/api/uploads/image", {
-      method: "POST",
-      credentials: "include",
-      body: formData,
-    });
-
-    if (!res.ok) {
-      throw new Error(await readErrorMessage(res, "Failed to upload image"));
-    }
-
-    const data = (await res.json()) as { url: string };
-    if (!data.url?.startsWith("/uploads/")) {
-      throw new Error("Invalid upload response from server");
-    }
-    return data.url;
-  }
-
-  function goToPost(postId: string) {
-    window.location.assign(`/r/${communityName}/post/${postId}`);
-  }
-
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
     const form = e.currentTarget;
     const formData = new FormData(form);
 
     try {
-      let imageUrl: string | undefined;
-      if (imageFile) {
-        imageUrl = await uploadImage(imageFile);
-      }
-
-      const res = await fetch("/api/posts", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          communityName,
-          title: String(formData.get("title")),
-          body: String(formData.get("body") || ""),
-          imageUrl,
-        }),
+      const post = await createPost.mutateAsync({
+        title: String(formData.get("title")),
+        body: String(formData.get("body") || ""),
+        imageFile,
       });
 
-      if (!res.ok) {
-        setError(await readErrorMessage(res, "Failed to create post"));
-        return;
-      }
-
-      const post = (await res.json()) as { id?: string };
-      if (!post.id) {
-        setError("Post created but server returned no id. Check the community feed.");
-        return;
-      }
-
-      goToPost(post.id);
+      window.location.assign(`/r/${communityName}/post/${post.id}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Network error";
-      if (msg === "Failed to fetch" || msg === "Network error") {
-        setError(
-          "Connection timed out or failed (common on Render cold start). Check r/" +
-            communityName +
-            " — your post may still have been created.",
-        );
-      } else {
-        setError(msg);
-      }
-    } finally {
-      setLoading(false);
+      setError(err instanceof Error ? err.message : "Something went wrong");
     }
   }
 
@@ -199,8 +130,8 @@ export function SubmitPostForm({ communityName }: SubmitPostFormProps) {
       {error && (
         <p className="text-sm font-medium text-d-danger">{error}</p>
       )}
-      <button type="submit" disabled={loading} className={btnPrimary}>
-        {loading ? "Posting…" : "Post"}
+      <button type="submit" disabled={createPost.isPending} className={btnPrimary}>
+        {createPost.isPending ? "Posting…" : "Post"}
       </button>
     </form>
   );

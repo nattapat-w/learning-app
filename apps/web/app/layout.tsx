@@ -3,6 +3,7 @@ import { IBM_Plex_Sans } from "next/font/google";
 import { AuthModal } from "./components/auth/AuthModal";
 import { AuthProvider } from "./components/auth/auth-context";
 import { Header } from "./components/Header";
+import { QueryProvider } from "./components/QueryProvider";
 import { TopLoadingBar } from "./components/TopLoadingBar";
 import "./globals.css";
 
@@ -25,12 +26,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${ibmPlexSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
-        <AuthProvider>
-          <TopLoadingBar />
-          <Header />
-          {children}
-          <AuthModal />
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <TopLoadingBar />
+            <Header />
+            {children}
+            <AuthModal />
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );
