@@ -4,15 +4,19 @@ import {
   Get,
   Post,
   Query,
+  Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import type { UserPublic } from "../common/types/user-public";
-import { AuthService } from "./auth.service";
+import {
+  AuthService,
+  LINE_OAUTH_STATE_COOKIE,
+} from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
 import { MagicLinkDto } from "./dto/magic-link.dto";
 import { RegisterDto } from "./dto/register.dto";
@@ -75,17 +79,23 @@ export class AuthController {
   }
 
   @Get("line")
-  @UseGuards(AuthGuard("line"))
-  lineAuth(): void {
-    // Passport redirects to LINE.
+  lineAuth(@Res() res: Response): void {
+    this.authService.startLineOAuth(res);
   }
 
   @Get("line/callback")
-  @UseGuards(AuthGuard("line"))
-  lineCallback(
-    @CurrentUser() user: UserPublic,
+  async lineCallback(
+    @Query("code") code: string,
+    @Query("state") state: string,
+    @Req() req: Request,
     @Res() res: Response,
-  ): void {
+  ): Promise<void> {
+    const user = await this.authService.completeLineOAuth(
+      code,
+      state,
+      req.cookies?.[LINE_OAUTH_STATE_COOKIE] as string | undefined,
+      res,
+    );
     this.authService.attachAuthCookie(res, user);
     res.redirect(this.authService.getWebRedirectUrl());
   }

@@ -21,6 +21,7 @@ import { LineProfile } from "./types/line-profile";
 import { JwtPayload } from "./types/jwt-payload";
 
 export const ACCESS_TOKEN_COOKIE = "access_token";
+export const LINE_OAUTH_STATE_COOKIE = "line_oauth_state";
 
 @Injectable()
 export class AuthService {
@@ -190,6 +191,120 @@ export class AuthService {
       },
     });
     return toUserPublic(user);
+  }
+
+  startLineOAuth(res: Response): void {
+    const state = randomBytes(16).toString("hex");
+    res.cookie(LINE_OAUTH_STATE_COOKIE, state, this.getOAuthStateCookieOptions());
+
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: this.configService.getOrThrow<string>("LINE_CHANNEL_ID"),
+      redirect_uri: this.configService.getOrThrow<string>("LINE_CALLBACK_URL"),
+      state,
+      scope: "profile openid",
+    });
+
+    res.redirect(
+      `https://access.line.me/oauth2/v2.1/authorize?${params.toString()}`,
+    );
+  }
+
+  async completeLineOAuth(
+    code: string | undefined,
+    state: string | undefined,
+    storedState: string | undefined,
+    res: Response,
+  ): Promise<UserPublic> {
+    this.clearOAuthStateCookie(res);
+
+    if (!code) {
+      throw new BadRequestException("Missing LINE authorization code");
+    }
+    if (!state || !storedState || state !== storedState) {
+      throw new UnauthorizedException("Invalid LINE OAuth state");
+    }
+
+    const accessToken = await this.exchangeLineCode(code);
+    const lineProfile = await this.fetchLineProfile(accessToken);
+
+    return this.findOrCreateLineUser({
+      lineId: lineProfile.userId,
+      displayName: lineProfile.displayName,
+      avatarUrl: lineProfile.pictureUrl,
+    });
+  }
+
+  private async exchangeLineCode(code: string): Promise<string> {
+    const body = new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: this.configService.getOrThrow<string>("LINE_CALLBACK_URL"),
+      client_id: this.configService.getOrThrow<string>("LINE_CHANNEL_ID"),
+      client_secret: this.configService.getOrThrow<string>("LINE_CHANNEL_SECRET"),
+    });
+
+    const tokenRes = await fetch("https://api.line.me/oauth2/v2.1/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+
+    if (!tokenRes.ok) {
+      throw new UnauthorizedException("LINE token exchange failed");
+    }
+
+    const data = (await tokenRes.json()) as { access_token?: string };
+    if (!data.access_token) {
+      throw new UnauthorizedException("LINE token response missing access_token");
+    }
+
+    return data.access_token;
+  }
+
+  private async fetchLineProfile(accessToken: string): Promise<{
+    userId: string;
+    displayName?: string;
+    pictureUrl?: string;
+  }> {
+    const profileRes = await fetch("https://api.line.me/v2/profile", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!profileRes.ok) {
+      throw new UnauthorizedException("Failed to fetch LINE profile");
+    }
+
+    return profileRes.json() as Promise<{
+      userId: string;
+      displayName?: string;
+      pictureUrl?: string;
+    }>;
+  }
+
+  private getOAuthStateCookieOptions(): {
+    httpOnly: boolean;
+    secure: boolean;
+    sameSite: "lax";
+    path: string;
+    maxAge: number;
+  } {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 15 * 60 * 1000,
+    };
+  }
+
+  private clearOAuthStateCookie(res: Response): void {
+    res.clearCookie(LINE_OAUTH_STATE_COOKIE, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
   }
 
   async sendMagicLink(dto: MagicLinkDto): Promise<{ success: true }> {
