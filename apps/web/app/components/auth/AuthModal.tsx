@@ -7,20 +7,16 @@ import {
   useLoginMutation,
   useMagicLinkMutation,
   useRegisterMutation,
+  type AuthProviders,
 } from "../../../lib/hooks/use-api-mutations";
 import { useAuth } from "./auth-context";
 import { SocialAuthButton, socialIcons } from "./SocialAuthButton";
 
 const authLinkBtn = `${linkAccent} font-medium bg-transparent border-none min-h-0 min-w-0 px-0 py-0`;
 
-type AuthProviders = {
-  google: boolean;
-  magicLink: boolean;
-  googleMissing?: string[];
-};
-
 const defaultProviders: AuthProviders = {
   google: false,
+  line: false,
   magicLink: false,
 };
 
@@ -32,15 +28,17 @@ export function AuthModal() {
   const magicLinkMutation = useMagicLinkMutation();
 
   const providers = providersQuery.data ?? defaultProviders;
-  const providersError =
+  const providersError: AuthProviders | null =
     providersQuery.isError && !providersQuery.data
-      ? ({
+      ? {
           google: false,
+          line: false,
           magicLink: false,
           googleMissing: ["API unreachable — check API_URL / Render"],
-        } satisfies AuthProviders)
+          lineMissing: ["API unreachable — check API_URL / Render"],
+        }
       : null;
-  const activeProviders = providersError ?? providers;
+  const activeProviders: AuthProviders = providersError ?? providers;
 
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -96,6 +94,19 @@ export function AuthModal() {
       setError(null);
     }
     window.location.href = "/api/auth/google";
+  }
+
+  function startLine() {
+    if (!activeProviders.line) {
+      const missing = activeProviders.lineMissing?.join(", ");
+      setNotice(
+        missing
+          ? `API still missing: ${missing}. Set on Render (production) or apps/api/.env (local). Trying LINE…`
+          : "LINE may not be configured on the API. Trying anyway…",
+      );
+      setError(null);
+    }
+    window.location.href = "/api/auth/line";
   }
 
   async function sendMagicLink(e?: FormEvent) {
@@ -221,6 +232,12 @@ export function AuthModal() {
                 label="Continue with Google"
                 onClick={startGoogle}
                 dimmed={!activeProviders.google}
+              />
+              <SocialAuthButton
+                icon={socialIcons.line}
+                label="Continue with LINE"
+                onClick={startLine}
+                dimmed={!activeProviders.line}
               />
               <SocialAuthButton
                 icon={socialIcons.link}

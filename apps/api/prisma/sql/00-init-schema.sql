@@ -37,6 +37,7 @@ CREATE TABLE "User" (
     "email" TEXT NOT NULL,
     "passwordHash" TEXT,
     "googleId" TEXT,
+    "lineId" TEXT,
     "displayName" TEXT,
     "bio" TEXT,
     "avatarUrl" TEXT,
@@ -129,6 +130,7 @@ CREATE TABLE "Vote" (
 CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 CREATE UNIQUE INDEX "User_googleId_key" ON "User"("googleId");
+CREATE UNIQUE INDEX "User_lineId_key" ON "User"("lineId");
 CREATE UNIQUE INDEX "MagicLinkToken_token_key" ON "MagicLinkToken"("token");
 CREATE INDEX "MagicLinkToken_email_idx" ON "MagicLinkToken"("email");
 CREATE UNIQUE INDEX "Community_name_key" ON "Community"("name");

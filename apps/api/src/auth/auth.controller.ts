@@ -74,6 +74,22 @@ export class AuthController {
     res.redirect(this.authService.getWebRedirectUrl());
   }
 
+  @Get("line")
+  @UseGuards(AuthGuard("line"))
+  lineAuth(): void {
+    // Passport redirects to LINE.
+  }
+
+  @Get("line/callback")
+  @UseGuards(AuthGuard("line"))
+  lineCallback(
+    @CurrentUser() user: UserPublic,
+    @Res() res: Response,
+  ): void {
+    this.authService.attachAuthCookie(res, user);
+    res.redirect(this.authService.getWebRedirectUrl());
+  }
+
   @Post("magic-link")
   sendMagicLink(@Body() dto: MagicLinkDto) {
     return this.authService.sendMagicLink(dto);

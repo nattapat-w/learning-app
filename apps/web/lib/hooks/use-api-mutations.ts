@@ -6,8 +6,10 @@ import type { CommentPublic, CommunitySummary, UserPublic } from "../types";
 
 export type AuthProviders = {
   google: boolean;
+  line: boolean;
   magicLink: boolean;
   googleMissing?: string[];
+  lineMissing?: string[];
 };
 
 export function useAuthProviders(enabled = true) {

@@ -6,6 +6,7 @@ import { UsersModule } from "../users/users.module.js";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { GoogleStrategy } from "./strategies/google.strategy";
+import { LineStrategy } from "./strategies/line.strategy";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 
 function isGoogleOAuthEnabled(): boolean {
@@ -16,10 +17,19 @@ function isGoogleOAuthEnabled(): boolean {
   );
 }
 
+function isLineOAuthEnabled(): boolean {
+  return Boolean(
+    process.env.LINE_CHANNEL_ID?.trim() &&
+      process.env.LINE_CHANNEL_SECRET?.trim() &&
+      process.env.LINE_CALLBACK_URL?.trim(),
+  );
+}
+
 @Module({})
 export class AuthModule {
   static register(): DynamicModule {
     const googleOAuthEnabled = isGoogleOAuthEnabled();
+    const lineOAuthEnabled = isLineOAuthEnabled();
 
     return {
       module: AuthModule,
@@ -38,6 +48,7 @@ export class AuthModule {
         AuthService,
         JwtStrategy,
         ...(googleOAuthEnabled ? [GoogleStrategy] : []),
+        ...(lineOAuthEnabled ? [LineStrategy] : []),
       ],
       exports: [AuthService, JwtModule, PassportModule],
     };

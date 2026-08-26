@@ -55,6 +55,9 @@ importers:
       passport-jwt:
         specifier: ^4.0.1
         version: 4.0.1
+      passport-oauth2:
+        specifier: ^1.8.0
+        version: 1.8.0
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -92,6 +95,9 @@ importers:
       '@types/passport-jwt':
         specifier: ^4.0.1
         version: 4.0.1
+      '@types/passport-oauth2':
+        specifier: ^1.8.0
+        version: 1.8.0
       eslint:
         specifier: ^9.18.0
         version: 9.39.5(jiti@2.7.0)

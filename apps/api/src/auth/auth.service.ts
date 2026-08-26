@@ -17,6 +17,7 @@ import { LoginDto } from "./dto/login.dto";
 import { MagicLinkDto } from "./dto/magic-link.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { GoogleProfile } from "./types/google-profile";
+import { LineProfile } from "./types/line-profile";
 import { JwtPayload } from "./types/jwt-payload";
 
 export const ACCESS_TOKEN_COOKIE = "access_token";
@@ -38,8 +39,10 @@ export class AuthService {
 
   getProviders(): {
     google: boolean;
+    line: boolean;
     magicLink: boolean;
     googleMissing?: string[];
+    lineMissing?: string[];
   } {
     const googleMissing: string[] = [];
     if (!this.configService.get("GOOGLE_CLIENT_ID")?.trim()) {
@@ -52,10 +55,23 @@ export class AuthService {
       googleMissing.push("GOOGLE_CALLBACK_URL");
     }
 
+    const lineMissing: string[] = [];
+    if (!this.configService.get("LINE_CHANNEL_ID")?.trim()) {
+      lineMissing.push("LINE_CHANNEL_ID");
+    }
+    if (!this.configService.get("LINE_CHANNEL_SECRET")?.trim()) {
+      lineMissing.push("LINE_CHANNEL_SECRET");
+    }
+    if (!this.configService.get("LINE_CALLBACK_URL")?.trim()) {
+      lineMissing.push("LINE_CALLBACK_URL");
+    }
+
     return {
       google: googleMissing.length === 0,
+      line: lineMissing.length === 0,
       magicLink: Boolean(this.resend && this.configService.get("EMAIL_FROM")),
       ...(googleMissing.length > 0 ? { googleMissing } : {}),
+      ...(lineMissing.length > 0 ? { lineMissing } : {}),
     };
   }
 
@@ -133,6 +149,42 @@ export class AuthService {
         username,
         email,
         googleId: profile.googleId,
+        displayName: profile.displayName,
+        avatarUrl: profile.avatarUrl,
+      },
+    });
+    return toUserPublic(user);
+  }
+
+  async findOrCreateLineUser(profile: LineProfile): Promise<UserPublic> {
+    const email = `line_${profile.lineId}@line.local`;
+
+    const byLine = await this.prisma.user.findUnique({
+      where: { lineId: profile.lineId },
+    });
+    if (byLine) {
+      return toUserPublic(byLine);
+    }
+
+    const byEmail = await this.prisma.user.findUnique({ where: { email } });
+    if (byEmail) {
+      const linked = await this.prisma.user.update({
+        where: { id: byEmail.id },
+        data: {
+          lineId: profile.lineId,
+          displayName: byEmail.displayName ?? profile.displayName,
+          avatarUrl: byEmail.avatarUrl ?? profile.avatarUrl,
+        },
+      });
+      return toUserPublic(linked);
+    }
+
+    const username = await this.generateUsername(email);
+    const user = await this.prisma.user.create({
+      data: {
+        username,
+        email,
+        lineId: profile.lineId,
         displayName: profile.displayName,
         avatarUrl: profile.avatarUrl,
       },
