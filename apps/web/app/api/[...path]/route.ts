@@ -26,6 +26,11 @@ function buildResponseHeaders(upstream: Response): Headers {
     out.set("content-type", contentType);
   }
 
+  const location = upstream.headers.get("location");
+  if (location) {
+    out.set("location", location);
+  }
+
   const setCookie = upstream.headers.getSetCookie?.() ?? [];
   for (const cookie of setCookie) {
     out.append("set-cookie", cookie);
@@ -103,6 +108,19 @@ async function proxyRequest(
       body,
       redirect: "manual",
     });
+
+    const isRedirect =
+      upstream.status >= 300 &&
+      upstream.status < 400 &&
+      upstream.headers.get("location");
+
+    if (isRedirect) {
+      return new Response(null, {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers: buildResponseHeaders(upstream),
+      });
+    }
 
     const responseBody = await upstream.arrayBuffer();
     return new Response(responseBody, {
