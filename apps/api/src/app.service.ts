@@ -4,6 +4,7 @@ import { PrismaService } from "./common/prisma/prisma.service";
 export type HealthStatus = {
   status: "ok" | "degraded";
   database: "connected" | "disconnected";
+  gitCommit?: string;
 };
 
 @Injectable()
@@ -19,6 +20,7 @@ export class AppService {
     return {
       status: dbOk ? "ok" : "degraded",
       database: dbOk ? "connected" : "disconnected",
+      gitCommit: process.env.RENDER_GIT_COMMIT,
     };
   }
 }

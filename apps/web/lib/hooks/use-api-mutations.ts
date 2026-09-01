@@ -8,6 +8,7 @@ export type AuthProviders = {
   google: boolean;
   line: boolean;
   magicLink: boolean;
+  lineOAuthVersion?: number;
   googleMissing?: string[];
   lineMissing?: string[];
 };

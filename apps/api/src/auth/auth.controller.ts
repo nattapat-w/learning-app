@@ -87,9 +87,21 @@ export class AuthController {
   async lineCallback(
     @Query("code") code: string,
     @Query("state") state: string,
+    @Query("error") error: string,
+    @Query("error_description") errorDescription: string,
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
+    if (error) {
+      const message = encodeURIComponent(
+        errorDescription || error || "LINE login failed",
+      );
+      res.redirect(
+        `${this.authService.getWebRedirectUrl()}?auth_error=line&message=${message}`,
+      );
+      return;
+    }
+
     const user = await this.authService.completeLineOAuth(
       code,
       state,

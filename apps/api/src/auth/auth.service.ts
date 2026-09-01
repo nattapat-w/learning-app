@@ -42,6 +42,7 @@ export class AuthService {
     google: boolean;
     line: boolean;
     magicLink: boolean;
+    lineOAuthVersion?: number;
     googleMissing?: string[];
     lineMissing?: string[];
   } {
@@ -70,6 +71,7 @@ export class AuthService {
     return {
       google: googleMissing.length === 0,
       line: lineMissing.length === 0,
+      lineOAuthVersion: lineMissing.length === 0 ? 2 : undefined,
       magicLink: Boolean(this.resend && this.configService.get("EMAIL_FROM")),
       ...(googleMissing.length > 0 ? { googleMissing } : {}),
       ...(lineMissing.length > 0 ? { lineMissing } : {}),
